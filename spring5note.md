@@ -44,10 +44,10 @@ User user = context.getBean("user",User.class);
 1. 基於IOC容器，容器底層就是物件工廠。
 2. Spring提供IOC容器兩種實現方式：（兩個接口）
     1. **BeanFactory**：IOC容器基本實現，Spring內部使用的接口，不提供開發人員進行使用。
-        懶加載：加載配置文件的時候不會創建物件，在獲取（使用）物件時才創建。
-    2. **ApplicationContext**：BeanFactory接口的子接口，提供更多更強大的功能，一般由開發人員進行使用。
-        啟動加載：加載配置文件時就會把在配置文件的物件進行創建。
-        ApplicationContext接口有實現類：
+        * 懶加載：加載配置文件的時候不會創建物件，在獲取（使用）物件時才創建。
+    3. **ApplicationContext**：BeanFactory接口的子接口，提供更多更強大的功能，一般由開發人員進行使用。
+        * 啟動加載：加載配置文件時就會把在配置文件的物件進行創建。
+        * ApplicationContext接口有實現類：
         1. FileSystemXmlApplicationContext：加載路徑為系統路徑。
         2. ClassPathXmlApplicationContext：加載路徑為專案包內的路徑。
 ## 07.尚矽谷_IOC容器-Bean管理XML方式（創建對象和set注入屬性） ～ 14.尚矽谷_IOC容器-Bean管理XML方式（注入集合類型屬性2）
@@ -212,8 +212,13 @@ User user = context.getBean("user",User.class);
             <property name="dname" value="行銷部"></property>
         </bean>
         ```
-        2. 第二種寫法
-        執行結果會是技術部。
+        2. 第二種寫法，執行結果會是技術部。
+        ```java=
+        //生成dept的get方法（必須有get方法，才能取得物件並設值。）
+        public Dept getDept() {
+            return dept;
+        }
+        ```
         ```xml=
         <bean id="emp" class="com.atguigu.spring5.bean.Emp">
             <property name="ename" value="Mark"></property>
@@ -337,5 +342,6 @@ User user = context.getBean("user",User.class);
                 <property name="list" ref="bookList"></property>
             </bean>
         ```
+        Xin：我個人的一些想法....
     
 
