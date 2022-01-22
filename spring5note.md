@@ -1,3 +1,4 @@
+###### tags: `Java`
 # 尚矽谷Spring框架視頻教程（spring5源碼級講解）
 ## 01-尚矽谷-課程介紹、02.尚矽谷_框架概述
 ### IOC
@@ -97,7 +98,7 @@ User user = context.getBean("user",User.class);
           //屬性
           private String oname;
           private String address;
-          //有參數構造
+          //有參數建構子
           public Orders(String oname,String address) {
               this.oname = oname;
               this.address = address;
@@ -111,7 +112,7 @@ User user = context.getBean("user",User.class);
             <constructor-arg name="address" value="World"></constructor-arg>
         </bean>
         ```
-    3. p名稱空間注入（瞭解即可）
+    3. p名稱空間（或叫命名空間）注入（瞭解即可）
         1. 使用p名稱空間注入，可以簡化基於XML的配置方式。
             1. 添加p名稱空間在配置文件上方：xmlns:p
             ```xml=
@@ -146,9 +147,9 @@ User user = context.getBean("user",User.class);
         3. 在Spring配置文件中進行配置。
         ```xml=
         <bean id="userService" class="com.atguigu.spring5.service.UserService">
-            <!--注入userDao對象
+            <!--注入userDao物件
                 name屬性：類裡面的屬性名稱
-                ref屬性：創建userDao對象的bean標籤id值-->
+                ref屬性：創建userDao物件的bean標籤id值-->
             <property name="userDao" ref="userDaoImpl"></property>
         </bean>
         <bean id="userDaoImpl" class="com.atguigu.spring5.dao.UserDaoImpl"></bean>
@@ -170,7 +171,7 @@ User user = context.getBean("user",User.class);
         public class Emp {
             private String ename;
             private String gender;
-            //員工屬於某一個部門，使用對象形式表示
+            //員工屬於某一個部門，使用物件形式表示
             private Dept dept;
 
             public void setDept(Dept dept) {
@@ -342,6 +343,194 @@ User user = context.getBean("user",User.class);
                 <property name="list" ref="bookList"></property>
             </bean>
         ```
-        Xin：我個人的一些想法....
-    
+## 15.尚矽谷_IOC容器-Bean管理（工廠bean）
+1. Spring 有兩種類型bean，一種普通bean，另外一種工廠bean（FactoryBean）。
+2. 普通bean：在配置文件中定義的bean類型就是返回類型。
+3. 工廠bean：在配置文件定義bean類型可以和返回類型不一樣。
 
+第一步：創建類，讓這個類作為工廠bean，實現接口FactoryBean
+
+第二步：實現接口裡面的方法，在實現的方法中定義返回的bean類型
+
+```java=
+public class MyBean implements FactoryBean<Course> {
+    //定義返回bean
+    @Override
+    public Course getObject() throws Exception {
+        Course course = new Course();
+        course.setCname("abc");
+        return course;
+    }
+}
+```
+```xml=
+<bean id="myBean" class="com.atguigu.spring5.factorybean.MyBean">
+</bean>
+```
+```java=
+@Test
+public void test3() {
+    ApplicationContext context =
+    new ClassPathXmlApplicationContext("bean3.xml");
+    Course course = context.getBean("myBean", Course.class); //返回值類型可以不是定義的bean類型
+    System.out.println(course);
+}
+```
+## 16.尚硅谷_IOC容器-Bean管理（bean的作用域）
+1. 在Spring裡面，設置創建bean實例是單實例還是多實例。
+2. 在Spring裡面，默認情況下，bean是單實例物件。
+3. 如何設置單實例還是多實例
+    1. 在spring配置文件bean標籤裡面有屬性（scope）用於設置單實例還是多實例。
+    2. 2. scope屬性值：
+        * singleton：默認值，表示是單實例物件。
+        * prototype：表示是多實例物件，每次調用都創建一個實例。
+        * request：servlet容器相關，每個http請求中建立一個新的實例。
+        * session：servlet容器相關，session互斥，http請求中建立一個新的實例。
+
+    3. singleton和prototype區別
+        * 設置scope值是singleton的時候，加載spring配置文件時候就會創建單實例物件。
+        * 設置scope值是prototype的時候，不是在加載spring配置文件時候創建物件，在調用getBean方法時候創建多實例物件。
+## 17.尚硅谷_IOC容器-Bean管理（bean生命周期）
+1. 生命週期
+    1. 從物件創建到物件銷毀的過程
+
+2. bean 生命週期
+    1. 通過建構子創建bean實例（無參數建構子）
+    2. 為bean的屬性設置值和對其他bean引用（調用set方法）
+    3. 把bean實例傳遞bean後置處理器的方法postProcessBeforeInitialization
+    4. 調用bean的初始化方法（需要進行配置初始化的方法）
+    5. 把bean實例傳遞bean後置處理器的方法postProcessAfterInitialization
+    6. bean可以使用了（物件獲取到了）
+    7. 當容器關閉時候，調用bean的銷毀的方法（需要進行配置銷毀的方法）
+
+    **※ 後置處理器配置，會為當前配置文件中的所有bean都添加後置處理器。**
+
+3. 程式碼演示：
+```java=
+public class Orders {
+    //無參數建構子
+    public Orders() {
+        System.out.println("第一步 執行無參數建構子創建bean實例");
+    }
+    private String oname;
+        public void setOname(String oname) {
+        this.oname = oname;
+        System.out.println("第二步 調用set方法設置屬性值");
+    }
+    //創建執行的初始化的方法
+    public void initMethod() {
+        System.out.println("第三步 執行初始化的方法");
+    }
+    //創建執行的銷毀的方法
+    public void destroyMethod() {
+        System.out.println("第五步 執行銷毀的方法");
+    }
+}
+```
+```java=
+public class MyBeanPost implements BeanPostProcessor {//創建後置處理器實現類
+    @Override
+    public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+        System.out.println("在初始化之前執行的方法");
+        return bean;
+    }
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+        System.out.println("在初始化之後執行的方法");
+        return bean;
+    }
+}
+```
+```xml=
+<!--配置文件的bean參數配置-->
+<bean id="orders" class="com.atguigu.spring5.bean.Orders" init-method="initMethod" destroy-method="destroyMethod">	<!--配置初始化方法和銷毀方法-->
+    <property name="oname" value="手機"></property><!--這裡就是通過set方式（注入屬性）賦值-->
+</bean>
+
+<!--配置後置處理器-->
+<bean id="myBeanPost" class="com.atguigu.spring5.bean.MyBeanPost"></bean>
+```
+```java=
+@Test
+public void testBean3() {
+    // ApplicationContext context =
+    // new ClassPathXmlApplicationContext("bean4.xml");
+    ClassPathXmlApplicationContext context =
+        new ClassPathXmlApplicationContext("bean4.xml");
+    Orders orders = context.getBean("orders", Orders.class);
+    System.out.println("第四步 獲取創建 bean 實例對象");
+    System.out.println(orders);
+    //手動讓 bean 實例銷毀
+    context.close();
+}
+```
+## 18.尚矽谷_IOC容器-Bean管理XML方式（自動裝配）
+1. 什麼是自動裝配（autowire）
+    
+    根據指定裝配規則（屬性名稱byName或屬性類型byType），Spring自動將匹配的屬性值進行注入。
+2. 演示自動裝配過程：
+```xml=
+<!--
+    實現自動裝配
+    bean標籤屬性autowire，配置自動裝配
+    autowire屬性常用兩個值：
+    byName根據屬性名稱注入，注入值bean的id值和類屬性名稱一樣
+    byType根據屬性類型注入
+-->
+<bean id="emp" class="com.zhi.spring5.autowire.Employee" autowire="byName">
+<!--<property name="department" ref="department"></property>-->
+</bean>
+<bean id="dept" class="com.zhi.spring5.autowire.Department"></bean>
+
+```
+```java=
+public class Emp {
+    //若byName，依據dept名稱；byType，依據Dept類型。但xml定義檔中的Dept不能有多個。
+    private Dept dept;
+    public void setDept(Dept dept) {
+        this.dept = dept;
+    }
+}
+```
+## 19.尚矽谷_IOC容器-Bean管理XML方式（外部屬性文件）
+方式一：直接配置資料庫資訊
+1. 配置Druid（德魯伊）連接池。
+2. 引入Druid（德魯伊）連接池依賴jar包。
+```xml=
+<!--直接配置連接池-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="com.mysql.jdbc.Driver"></property>
+        <property name="url" value="jdbc:mysql://localhost:3306/userDb"></property>
+        <property name="username" value="root"></property>
+        <property name="password" value="root"></property>
+    </bean>
+
+```
+方式二：引入外部屬性文件配置資料庫連接池
+1. 創建外部屬性文件，properties格式文件，寫資料庫資訊（jdbc.properties）。
+```xml=
+prop.driverClass=com.mysql.jdbc.Driver
+prop.url=jdbc:mysql://localhost:3306/userDb
+prop.userName=root
+prop.password=root
+```
+2. 把外部properties屬性文件引入到spring配置文件中——引入context名稱空間。
+```xml=
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd"><!--引入context名稱空間-->
+    
+    <!--引入外部屬性文件-->
+    <context:property-placeholder location="classpath:jdbc.properties"/>
+
+    <!--配置連接池，用表達式，吃參數值-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="${prop.driverClass}"></property>
+        <property name="url" value="${prop.url}"></property>
+        <property name="username" value="${prop.userName}"></property>
+        <property name="password" value="${prop.password}"></property>
+    </bean>
+</beans>
+```
