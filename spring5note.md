@@ -413,17 +413,17 @@ public class Orders {
         System.out.println("第一步 執行無參數建構子創建bean實例");
     }
     private String oname;
-        public void setOname(String oname) {
+    public void setOname(String oname) {
         this.oname = oname;
         System.out.println("第二步 調用set方法設置屬性值");
     }
     //創建執行的初始化的方法
     public void initMethod() {
-        System.out.println("第三步 執行初始化的方法");
+        System.out.println("第四步 執行初始化的方法");
     }
     //創建執行的銷毀的方法
     public void destroyMethod() {
-        System.out.println("第五步 執行銷毀的方法");
+        System.out.println("第七步 執行銷毀的方法");
     }
 }
 ```
@@ -431,12 +431,12 @@ public class Orders {
 public class MyBeanPost implements BeanPostProcessor {//創建後置處理器實現類
     @Override
     public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-        System.out.println("在初始化之前執行的方法");
+        System.out.println("第三步 在初始化之前執行的方法");
         return bean;
     }
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-        System.out.println("在初始化之後執行的方法");
+        System.out.println("第五步 在初始化之後執行的方法");
         return bean;
     }
 }
@@ -458,7 +458,7 @@ public void testBean3() {
     ClassPathXmlApplicationContext context =
         new ClassPathXmlApplicationContext("bean4.xml");
     Orders orders = context.getBean("orders", Orders.class);
-    System.out.println("第四步 獲取創建 bean 實例對象");
+    System.out.println("第六步 獲取創建 bean 實例對象");
     System.out.println(orders);
     //手動讓 bean 實例銷毀
     context.close();
@@ -480,7 +480,7 @@ public void testBean3() {
 <bean id="emp" class="com.zhi.spring5.autowire.Employee" autowire="byName">
 <!--<property name="department" ref="department"></property>-->
 </bean>
-<bean id="dept" class="com.zhi.spring5.autowire.Department"></bean>
+<bean id="dept" class="com.zhi.spring5.autowire.Dept"></bean>
 
 ```
 ```java=
