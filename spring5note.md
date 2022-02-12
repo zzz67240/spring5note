@@ -534,3 +534,229 @@ prop.password=root
     </bean>
 </beans>
 ```
+
+## 20.尚矽谷_IOC容器-Bean管理註解方式（創建對象）
+1. 什麼是註解
+    1. 註解是代碼特殊標記，格式：@註解名稱(屬性名稱=屬性值, 屬性名稱=屬性值…)
+    2. 使用註解，註解作用在類上面，方法上面，屬性上面
+    3. 使用註解目的：簡化xml 配置
+
+2. Spring 針對Bean 管理中創建對象提供註解
+
+   下面四個註解功能是一樣的，都可以用來創建bean 實例
+    1. @Component
+    2. @Service
+    3. @Controller
+    4. @Repository
+
+3. 基於註解方式實現對象創建
+
+第一步引入依賴（引入spring-aop jar包）
+
+第二步開啟組件掃描
+
+```xml=
+<!--開啟組件掃描
+ 1 如果掃描多個包，多個包使用逗號隔開
+ 2 掃描包上層目錄
+-->
+<context:component-scan base-package="com.atguigu"></context:component-scan>
+```
+第三步創建類，在類上面添加創建對象註解
+```java=
+//在註解裡面 value 屬性值可以省略不寫，
+//默認值是類名稱，首字母小寫
+//UserService -- userService
+@Component(value = "userService") //註解等同於XML配置文件：<bean id="userService" class=".."/>
+public class UserService {
+    public void add() {
+        System.out.println("service add.......");
+    }
+}
+```
+## 21.尚矽谷_IOC容器-Bean管理註解方式（組件掃描配置）
+```xml=
+<!--示例 1
+ use-default-filters="false" 表示現在不使用默認 filter，自己配置 filter
+ context:include-filter ，設置掃描哪些內容
+-->
+<context:component-scan base-package="com.atguigu" use-defaultfilters="false">
+   <context:include-filter type="annotation"
+    expression="org.springframework.stereotype.Controller"/><!--代表只掃描Controller註解的類-->
+</context:component-scan>
+
+<!--示例 2
+ 下面配置掃描包所有內容
+ context:exclude-filter： 設置哪些內容不進行掃描
+-->
+<context:component-scan base-package="com.atguigu">
+   <context:exclude-filter type="annotation"
+    expression="org.springframework.stereotype.Controller"/><!--表示Controller註解的類之外一切都進行掃描-->
+</context:component-scan>
+```
+## 22.尚矽谷_IOC容器-Bean管理註解方式（注入屬性@Autowired和Qualifier） ~ 23.尚矽谷_IOC容器-Bean管理註解方式（注入屬性@Resource和Value）
+1. 基於註解方式實現屬性注入
+
+    1. @Autowired：根據屬性類型進行自動裝配
+    
+        第一步把service 和dao 對象創建，在service 和dao 類添加創建對象註解
+
+        第二步在service 注入dao 對象，在service 類添加dao 類型屬性，在屬性上面使用註解
+```java=
+@Service
+public class UserService {
+    //定義 dao 類型屬性
+    //不需要添加 set 方法
+    //添加註入屬性註解
+    @Autowired
+    private UserDao userDao;
+    public void add() {
+        System.out.println("service add.......");
+        userDao.add();
+    }
+}
+
+//Dao實現類
+@Repository
+//@Repository(value = "userDaoImpl1")
+public class UserDaoImpl implements UserDao {
+    @Override
+    public void add() {
+        System.out.println("dao add.....");
+    }
+}
+```
+2. @Qualifier：根據名稱進行注入，這個@Qualifier 註解的使用，和上面@Autowired 一起使用
+```java=
+//定義 dao 類型屬性
+//不需要添加 set 方法
+//添加註入屬性註解
+@Autowired //根據類型進行注入
+@Qualifier(value = "userDaoImpl1") //根據名稱進行注入（目的在於區別同一接口下有多個實現類，根據類型就無法選擇，從而出錯！）
+private UserDao userDao;
+```
+3. @Resource：可以根據類型注入，也可以根據名稱注入（它屬於javax包下的註解，不推薦使用！）
+```java=
+//只有寫@Resource //根據類型進行注入
+@Resource(name = "userDaoImpl1") //根據名稱進行注入
+private UserDao userDao;
+```
+4. @Value：注入普通類型屬性
+```java=
+@Value(value = "abc")
+private String name
+```
+## 24.尚矽谷_IOC容器-Bean管理註解方式（完全註解開發）
+1. 創建配置類，替代xml 配置文件
+```java=
+@Configuration //作為配置類，替代 xml 配置文件
+@ComponentScan(basePackages = {"com.atguigu"})
+    public class SpringConfig {
+}
+```
+2. 編寫測試類
+```java=
+@Test
+public void testService2() {
+    //加載配置類
+    ApplicationContext context
+        = new AnnotationConfigApplicationContext(SpringConfig.class);
+    UserService userService = context.getBean("userService", UserService.class);
+    System.out.println(userService);
+    userService.add();
+}
+```
+## 25.尚矽谷_AOP-基本概念
+AOP 基本概念
+1. 面向切面編程（方面），利用AOP 可以對業務邏輯的各個部分進行隔離，從而使得業務邏輯各部分之間的耦合度降低，提高程序的可重用性，同時提高了開發的效率。
+2. 通俗描述：不通過修改源代碼方式，在主幹功能裡面添加新功能
+3. 使用登錄例子說明AOP
+![](https://i.imgur.com/vgI6f8m.png)
+## 26.尚矽谷_AOP-底層原理
+AOP 底層使用動態代理，動態代理有兩種情況：
+第一種有接口情況，使用JDK 動態代理；創建接口實現類代理對象，增強類的方法
+![](https://i.imgur.com/qmq94QW.png)
+
+第二種沒有接口情況，使用CGLIB 動態代理；創建子類的代理對象，增強類的方法
+![](https://i.imgur.com/81kweuy.png)
+
+## 27.尚矽谷_AOP-底層原理（JDK動態代理實現）
+1. 使用JDK 動態代理，使用Proxy 類裡面的方法創建代理對象
+
+Class Proxy
+    
+    java.lang.Object
+    java.lang.reflect.Proxy
+
+調用newProxyInstance 方法，方法有三個參數：
+```java=
+public static Object newProxyInstance(ClassLoader loader,
+                                      Class<?>[] interfaces,
+                                      InvocationHandler h)
+```
+第一參數，類加載器
+
+第二參數，增強方法所在的類，這個類實現的接口，支持多個接口
+
+第三參數，實現這個接口InvocationHandler，創建代理對象，寫增強的部分
+
+2. 編寫JDK 動態代理代碼
+```java=
+//（1）創建接口，定義方法
+public interface UserDao {
+    public int add(int a,int b);
+    public String update(String id);
+}
+```
+```java=
+//（2）創建接口實現類，實現方法
+public class UserDaoImpl implements UserDao {
+    @Override
+    public int add(int a, int b) {
+        return a+b;
+    }
+    @Override
+    public String update(String id) {
+        return id;
+    }
+}
+```
+```java=
+//（3）使用 Proxy 類創建接口代理對象
+public class JDKProxy {
+    public static void main(String[] args) {
+        //創建接口實現類代理對象
+        Class[] interfaces = {UserDao.class};
+        UserDaoImpl userDao = new UserDaoImpl(); 
+        /** 第一參數，類加載器 
+   	    第二參數，增強方法所在的類，這個類實現的接口，(支持多個接口)
+   	    第三參數，實現這個接口 InvocationHandler，創建代理對象，寫增強的部分  */
+        UserDao dao =(UserDao)Proxy.newProxyInstance(JDKProxy.class.getClassLoader(), interfaces,
+   					new UserDaoProxy(userDao));
+        int result = dao.add(1, 2);
+        System.out.println("result:"+result);
+    }
+}
+
+//創建代理對象代碼
+class UserDaoProxy implements InvocationHandler {
+    //1 把創建的是誰的代理對象，把誰傳遞過來
+    //有參數構造傳遞
+    private Object obj;
+    public UserDaoProxy(Object obj) {
+        this.obj = obj;
+    }
+    //增強的邏輯
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    //方法之前
+        System.out.println("方法之前執行...."+method.getName()+" :傳遞的參數..."+ Arrays.toString(args));
+        //被增強的方法執行
+        Object res = method.invoke(obj, args);
+        //方法之後
+        System.out.println("方法之後執行...."+obj);
+        return res;
+    }
+}
+```
+## 28.尚矽谷_AOP-操作術語
