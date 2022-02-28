@@ -594,7 +594,7 @@ public class UserService {
     expression="org.springframework.stereotype.Controller"/><!--表示Controller註解的類之外一切都進行掃描-->
 </context:component-scan>
 ```
-## 22.尚矽谷_IOC容器-Bean管理註解方式（注入屬性@Autowired和Qualifier） ~ 23.尚矽谷_IOC容器-Bean管理註解方式（注入屬性@Resource和Value）
+## 22.尚矽谷_IOC容器-Bean管理註解方式（注入屬性@Autowired和Qualifier） ~ 23.尚矽谷_IOC容器-Bean管理註解方式（注入屬性@Resource和@Value）
 1. 基於註解方式實現屬性注入
 
     1. @Autowired：根據屬性類型進行自動裝配
@@ -626,6 +626,11 @@ public class UserDaoImpl implements UserDao {
     }
 }
 ```
+
+如果Spring配置了component scan，並且要注入的接口只有一個實現的話，那麼spring框架可以自動將interface於實現組裝起來。如果沒有配置component scan，那麼你必須在application-config.xml（或等同的配置文件）定義這個bean。
+
+參考網址：[聊聊@Autowired註解注入,寫接口名字還是實現類的名字](http://www.codebaoku.com/it-java/it-java-229549.html)
+
 2. @Qualifier：根據名稱進行注入，這個@Qualifier 註解的使用，和上面@Autowired 一起使用
 ```java=
 //定義 dao 類型屬性
@@ -654,6 +659,8 @@ private String name
     public class SpringConfig {
 }
 ```
+※ 補充：亦可使用[@Configuration搭配@Bean的作法](https://matthung0807.blogspot.com/2019/04/spring-configuration_28.html)
+
 2. 編寫測試類
 ```java=
 @Test
@@ -674,6 +681,7 @@ AOP 基本概念
 ![](https://i.imgur.com/vgI6f8m.png)
 ## 26.尚矽谷_AOP-底層原理
 AOP 底層使用動態代理，動態代理有兩種情況：
+
 第一種有接口情況，使用JDK 動態代理；創建接口實現類代理對象，增強類的方法
 ![](https://i.imgur.com/qmq94QW.png)
 
@@ -759,6 +767,9 @@ class UserDaoProxy implements InvocationHandler {
     }
 }
 ```
+※ 補充：invoke中的Proxy
+![](https://i.imgur.com/1whs3Cg.jpg)
+
 ## 28.尚矽谷_AOP-操作術語
 1. 連接點：類裡面哪些方法可以被增強，這些方法稱為連接點
 2. 切入點：實際被真正增強的方法稱為切入點
@@ -770,3 +781,313 @@ class UserDaoProxy implements InvocationHandler {
     5. 最終通知
 
 4. 切面：把通知應用到切入點的過程
+
+※ 補充：
+
+切面（Aspect）：一個關注點的模組化。以註解@Aspect的形式放在類上方，宣告一個切面。
+
+連線點（Joinpoint）：在程式執行過程中某個特定的點，比如某方法呼叫的時候或者處理異常的時候都可以是連線點。
+
+通知（Advice）：通知增強，需要完成的工作叫做通知，就是你寫的業務邏輯中需要比如事務、日誌等先定義好，然後需要的地方再去用。增強包括如下五個方面：
+
+@Before：在切點之前執行
+
+@After：在切點方法之後執行
+
+@AfterReturning：切點方法返回後執行
+
+@AfterThrowing：切點方法拋異常執行
+
+@Around：屬於環繞增強，能控制切點執行前，執行後，用這個註解後，程式拋異常，會影響@AfterThrowing這個註解。
+
+切點（Pointcut）：其實就是篩選出的連線點，匹配連線點的斷言，一個類中的所有方法都是連線點，但又不全需要，會篩選出某些作為連線點做為切點。
+
+引入（Introduction）：在不改變一個現有類程式碼的情況下，為該類新增屬性和方法,可以在無需修改現有類的前提下，讓它們具有新的行為和狀態。其實就是把切面（也就是新方法屬性：通知定義的）用到目標類中去。
+
+目標物件（Target Object）：被一個或者多個切面所通知的物件。也被稱做被通知（adviced）物件。既然Spring AOP是通過執行時代理實現的，這個物件永遠是一個被代理（proxied）物件。
+
+AOP代理（AOP Proxy）：AOP框架建立的物件，用來實現切面契約（例如通知方法執行等等）。在Spring中，AOP代理可以是JDK動態代理或者CGLIB代理。
+
+織入（Weaving）：把切面連線到其它的應用程式型別或者物件上，並建立一個被通知的物件。這些可以在編譯時（例如使用AspectJ編譯器），類載入時和執行時完成。Spring和其他純Java AOP框架一樣，在執行時完成織入。
+
+## 29.尚矽谷_AOP操作-準備工作
+1. Spring 框架一般都是基於AspectJ實現AOP操作，AspectJ不是Spring組成部分，獨立AOP框架，一般把AspectJ和Spirng框架一起使用，進行AOP操作。
+2. 基於AspectJ 實現AOP 操作：
+
+    1. 基於xml配置文件實現
+    2. 基於註解方式實現（使用）
+3. 引入相關jar包
+4. 切入點表達式
+
+    1. 切入點表達式作用：知道對哪個類裡面的哪個方法進行增強 
+    2. 語法結構： execution([權限修飾符] [返回類型] [類全路徑] [方法名稱]\([參數列表]\) )
+    3. 例子如下：
+        * 例 1：對 com.atguigu.dao.BookDao 類裡面的 add 進行增強
+
+		    execution(* com.atguigu.dao.BookDao.add(..))
+ 	    * 例 2：對 com.atguigu.dao.BookDao 類裡面的所有的方法進行增強
+
+ 	        execution(* com.atguigu.dao.BookDao.* (..))
+        * 例 3：對 com.atguigu.dao 包裡面所有類，類裡面所有方法進行增強
+
+		    execution(* com.atguigu.dao.*.* (..))
+
+## 30.尚矽谷_AOP操作-AspectJ註解（1） ～ 31.尚矽谷_AOP操作-AspectJ註解（2）
+1. 創建類，在類裡面定義方法
+```java=
+public class User {
+   public void add() {
+     System.out.println("add.......");
+   }
+}
+```
+2. 創建增強類（編寫增強邏輯）
+    
+    增強類裡面，創建方法，讓不同方法代表不同通知類型
+```java=
+//增強的類
+public class UserProxy {
+   public void before() {//前置通知
+     System.out.println("before......");
+   }
+}
+```
+
+3. 進行通知的配置
+```xml=
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+                        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+                        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+    <!-- 開啟註解掃描 -->
+    <context:component-scan base-package="com.atguigu.spring5.aopanno"></context:component-scan>
+
+    <!-- 開啟Aspect生成代理對象-->
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+</beans>
+```
+```java=
+//在增強的類上添加 @Aspect
+@Component
+@Aspect  //生成代理對象
+public class UserProxy {}
+
+//被增強的類
+@Component
+public class User {}
+```
+4. 配置不同類型的通知
+```java=
+@Component
+@Aspect  //生成代理對象
+public class UserProxy {
+    //相同切入點抽取
+    @Pointcut(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+    public void pointdemo() {
+
+    }
+
+    //前置通知
+    //@Before註解表示作為前置通知
+    @Before(value = "pointdemo()")//相同切入點抽取使用！
+    public void before() {
+        System.out.println("before.........");
+    }
+
+    //後置通知（返回通知）。返回值之後執行。
+    @AfterReturning(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+    public void afterReturning() {
+        System.out.println("afterReturning.........");
+    }
+
+    //最終通知。不論有無異常，方法之後執行。
+    @After(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+    public void after() {
+        System.out.println("after.........");
+    }
+
+    //異常通知
+    @AfterThrowing(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+    public void afterThrowing() {
+        System.out.println("afterThrowing.........");
+    }
+
+    //環繞通知
+    @Around(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+    public void around(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
+        System.out.println("環繞之前.........");
+
+        //被增強的方法執行
+        proceedingJoinPoint.proceed();
+        System.out.println("環繞之後.........");
+    }
+}
+```
+
+※ 補充：
+
+範例中的順序：
+
+環繞之前...
+
+before...
+
+add...
+
+環繞之後（afterReturning）...
+
+after(最終通知)...
+
+afterReturning...
+
+可知，環繞的before跟after會先於一般的before跟after。
+
+如果出異常（報錯），則after依然執行，afterReturning不會執行，環繞的afterReturning也不會執行，只會有afterThrowing。
+
+5. 有多個增強類對同一個方法進行增強，設置增強類優先級
+
+在增強類上面添加註解 @Order(數字類型值)，數字類型值越小優先級越高
+```java=
+@Component
+@Aspect
+@Order(1)
+public class PersonProxy{ }
+```
+
+6. 完全使用註解開發
+
+    創建配置類，不需要創建xml配置文件
+
+```java=
+@Configuration
+@ComponentScan(basePackages = {"com.atguigu"})
+@EnableAspectJAutoProxy(proxyTargetClass = true)
+public class ConfigAop{
+    
+}
+```
+
+## 32.尚矽谷_AOP操作-AspectJ配置文件
+```xml=
+<!--1、創建兩個類，增強類和被增強類，創建方法（同上一樣）-->
+<!--2、在 spring 配置文件中創建兩個類對象-->
+<!--創建對象-->
+<bean id="book" class="com.atguigu.spring5.aopxml.Book"></bean>
+<bean id="bookProxy" class="com.atguigu.spring5.aopxml.BookProxy"></bean>
+<!--3、在 spring 配置文件中配置切入點-->
+<!--配置 aop 增強-->
+<aop:config>
+   <!--切入點-->
+   <aop:pointcut id="p" expression="execution(* com.atguigu.spring5.aopxml.Book.buy(..))"/>
+   <!--配置切面-->
+   <aop:aspect ref="bookProxy">
+       <!--增強作用在具體的方法上-->
+       <aop:before method="before" pointcut-ref="p"/>
+   </aop:aspect>
+</aop:config>
+```
+## 33.尚矽谷_JdbcTemplate-概述和準備工作
+1. JdbcTemplate概念及使用
+
+    Spring框架對JDBC進行封裝，使用JdbcTemplate方便實現對數據庫操作
+
+2. 準備工作
+
+* 引入相關jar包
+
+*  在spring配置文件配置數據庫連接池
+
+```xml=
+<bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource"
+      destroy-method="close">
+   <property name="url" value="jdbc:mysql:///test" />
+   <property name="username" value="root" />
+   <property name="password" value="root" />
+   <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+</bean>
+```
+    
+* 配置JdbcTemplate 對象，注入DataSource
+    
+```xml=
+<!-- JdbcTemplate 對象 -->
+<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+   <!--注入 dataSource-->
+   <property name="dataSource" ref="dataSource"></property><!--set方式注入-->
+</bean>
+```
+
+* 創建service類，創建dao類，在dao 注入jdbcTemplate對象
+```xml=
+<!-- 組件掃描 -->
+<context:component-scan base-package="com.atguigu"></context:component-scan>
+```
+```java=
+@Service
+public class BookService {
+   //注入 dao
+   @Autowired
+   private BookDao bookDao;
+}
+
+@Repository
+public class BookDaoImpl implements BookDao {
+   //注入 JdbcTemplate
+   @Autowired
+   private JdbcTemplate jdbcTemplate;
+}
+```
+## 34.尚矽谷_JdbcTemplate操作數據庫-添加功能
+1. 對應數據庫創建實體類
+2. 創建service和dao
+    1. 在dao進行數據庫添加操作
+    2. 調用JdbcTemplate 對象裡面update 方法實現添加操作
+
+        update(String sql, Object... args)
+        
+        有兩個參數：
+        
+        第一個參數，sql語句
+        
+        第二個參數，可變參數，設置sql中的變數值
+```java=
+@Repository
+public class BookDaoImpl implements BookDao {
+    //注入 JdbcTemplate
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    //添加的方法
+    @Override
+    public void add(Book book) {
+        //1 創建 sql 語句
+        String sql = "insert into t_book values(?,?,?)";
+        //2 調用方法實現
+        Object[] args = {book.getUserId(), book.getUsername(),book.getUstatus()};
+        int update = jdbcTemplate.update(sql,args);
+        System.out.println(update);
+    }
+}
+```
+### 35.尚矽谷_JdbcTemplate操作數據庫-修改和刪除功能
+```java=
+//1、修改
+@Override
+public void updateBook(Book book) {
+    String sql = "update t_book set username=?,ustatus=? where user_id=?";
+    Object[] args = {book.getUsername(), book.getUstatus(),book.getUserId()};
+    int update = jdbcTemplate.update(sql, args);
+    System.out.println(update);
+}
+//2、刪除
+@Override
+public void delete(String id) {
+    String sql = "delete from t_book where user_id=?";
+    int update = jdbcTemplate.update(sql, id);
+    System.out.println(update);
+}
+//使用JdbcTemplate 模板所實現的 “增刪改” 都是調用了同一個 “update” 方法
+```
