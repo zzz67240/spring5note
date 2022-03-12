@@ -627,6 +627,8 @@ public class UserDaoImpl implements UserDao {
 }
 ```
 
+※ 補充：
+
 如果Spring配置了component scan，並且要注入的接口只有一個實現的話，那麼spring框架可以自動將interface於實現組裝起來。如果沒有配置component scan，那麼你必須在application-config.xml（或等同的配置文件）定義這個bean。
 
 參考網址：[聊聊@Autowired註解注入,寫接口名字還是實現類的名字](http://www.codebaoku.com/it-java/it-java-229549.html)
@@ -821,16 +823,16 @@ AOP代理（AOP Proxy）：AOP框架建立的物件，用來實現切面契約�
 
     1. 切入點表達式作用：知道對哪個類裡面的哪個方法進行增強 
     2. 語法結構： execution([權限修飾符] [返回類型] [類全路徑] [方法名稱]\([參數列表]\) )
-    3. 例子如下：
+    3. 例子如下（返回類型可以給一個空格）：
         * 例 1：對 com.atguigu.dao.BookDao 類裡面的 add 進行增強
 
-		    execution(* com.atguigu.dao.BookDao.add(..))
+		    execution(* com.atguigu.dao.BookDao.add(\.\.))
  	    * 例 2：對 com.atguigu.dao.BookDao 類裡面的所有的方法進行增強
 
- 	        execution(* com.atguigu.dao.BookDao.* (..))
+ 	        execution(* com.atguigu.dao.BookDao.* (\.\.))
         * 例 3：對 com.atguigu.dao 包裡面所有類，類裡面所有方法進行增強
 
-		    execution(* com.atguigu.dao.*.* (..))
+		    execution(* com.atguigu.dao.*.* (\.\.))
 
 ## 30.尚矽谷_AOP操作-AspectJ註解（1） ～ 31.尚矽谷_AOP操作-AspectJ註解（2）
 1. 創建類，在類裡面定義方法
@@ -938,19 +940,32 @@ before...
 
 add...
 
-環繞之後（afterReturning）...
+環繞之後...
 
 after(最終通知)...
 
 afterReturning...
 
-可知，環繞的before跟after會先於一般的before跟after。
+環繞之前跟環繞之後會先於一般的before跟after。
 
-如果出異常（報錯），則after依然執行，afterReturning不會執行，環繞的afterReturning也不會執行，只會有afterThrowing。
+如果出異常（報錯），則after依然執行，afterReturning不會執行，環繞之後也不會執行，只會有afterThrowing，環繞之前與環繞之後不等同於before與after。
+
+關於環繞之後：
+
+* 在after之前執行
+* 出異常就不執行。
+
+[Spring AOP @Before @Around @After 等 advice 的执行顺序](https://blog.csdn.net/rainbow702/article/details/52185827)
+
+正常情况：
+![](https://i.imgur.com/QHR5HVN.png)
+
+異常情況：
+![](https://i.imgur.com/3H0QkaQ.png)
 
 5. 有多個增強類對同一個方法進行增強，設置增強類優先級
 
-在增強類上面添加註解 @Order(數字類型值)，數字類型值越小優先級越高
+在增強類上面添加註解 @Order(數字類型值)，數字類型值越小優先級越高，0是最小
 ```java=
 @Component
 @Aspect
@@ -1091,3 +1106,281 @@ public void delete(String id) {
 }
 //使用JdbcTemplate 模板所實現的 “增刪改” 都是調用了同一個 “update” 方法
 ```
+## 36.尚硅谷_JdbcTemplate操作数据库-查询功能（1） ~ 37.尚矽谷_JdbcTemplate操作數據庫-查詢功能（2）
+1. 查詢表裡面有多少條記錄，或者返回某個值
+
+    queryForObject(String sql, Class<T> requiredType)
+    * 第一個參數：sql語句
+    * 第二個參數：返回類型class
+```java=
+@Override
+public int selectCount() {
+    String sql = "select count(*) from t_book";
+    Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
+    return count;
+}
+```
+2. 查詢返回對象
+    
+    queryForObject(String sql, RowMapper<T> rowMapper, Objects... args)
+    * 第一個參數：sql語句
+    * 第二個參數：RowMapper 是接口，針對返回不同類型數據，使用這個接口裡面 實現類 完成數據封裝
+    * 第三個參數：sql 語句值
+```java=
+@Override
+public Book findBookInfo(String id) {
+    String sql = "select * from t_book where user_id=?";
+    //調用方法
+    Book book = jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<Book>(Book.class), id);
+    return book;
+}
+```
+3. 查詢返回集合
+    
+    query(String sql, RowMapper<T> rowMapper, Objects... args)
+    * 第一個參數：sql語句
+    * 第二個參數：RowMapper 是接口，針對返回不同類型數據，使用這個接口裡面 實現類 完成數據封裝
+    * 第三個參數：sql 語句值
+```java=
+@Override
+public List<Book> findAllBook() {
+    String sql = "select * from t_book";
+    //調用方法
+    List<Book> bookList = jdbcTemplate.query(sql, new BeanPropertyRowMapper<Book>(Book.class));
+    return bookList;
+}
+```
+}
+## 38.尚矽谷_JdbcTemplate操作數據庫-批量添加功能 ~ 39.尚矽谷_JdbcTemplate操作數據庫-批量修改刪除功能
+批量操作：操作表裡面多條數據。
+1. 批量添加 
+    batchUpdate(String sql, List<Object[]> batchArgs)
+    
+    * 第一個參數：sql語句
+    * 第二個參數：List集合，添加多條記錄數據
+```java=
+//批量添加
+@Override
+public void batchAddBook(List<Object[]> batchArgs) {
+    String sql = "insert into t_book values(?,?,?)";
+    int[] ints = jdbcTemplate.batchUpdate(sql, batchArgs);
+    System.out.println(Arrays.toString(ints));
+}
+
+//批量添加測試
+List<Object[]> batchArgs = new ArrayList<>();
+Object[] o1 = {"3","java","a"};
+Object[] o2 = {"4","c++","b"};
+Object[] o3 = {"5","MySQL","c"};
+batchArgs.add(o1);
+batchArgs.add(o2);
+batchArgs.add(o3);
+
+//調用批量添加
+bookService.batchAdd(batchArgs);
+```
+2. 批量修改
+    
+    同批量添加，調用同一個方法，唯參數不同。
+```java=
+@Override
+public void batchUpdateBook(List<Object[]> batchArgs) {
+    String sql = "update t_book set username=?,ustatus=? where user_id=?";
+    int[] ints = jdbcTemplate.batchUpdate(sql, batchArgs);
+    System.out.println(Arrays.toString(ints));
+}
+```
+3. 批量刪除
+    
+    同批量添加與修改，調用同一個方法，唯參數不同。
+```java=
+@Override
+public void batchDeleteBook(List<Object[]> batchArgs) {
+    String sql = "delete from t_book where user_id=?";
+    int[] ints = jdbcTemplate.batchUpdate(sql, batchArgs);
+    System.out.println(Arrays.toString(ints));
+}
+```
+## 40.尚矽谷_事務操作-事務概念 ～ 42.尚矽谷_事務操作-事務場景引入
+1. 什麼是事務？
+    1. 事務是數據庫操作最基本單元，邏輯上一組操作，要嘛都成功，如果有一個失敗所有操作都失敗。 
+    
+    2. 案例分析：銀行轉帳
+![](https://i.imgur.com/q71g6Mt.png)
+    如上述例子，Micah給Maruko轉帳，只有在轉帳成功的情況下，Micah的賬戶餘額才會減少，Maruko的帳戶餘額增加，不存在Micah帳戶的餘額減少了，而Maruko的帳戶餘額卻不變。要嘛轉帳成功，兩邊餘額都改變；要帳轉帳失敗，兩邊餘額都保持不變。
+    
+2. 事務的四大特性
+    * 原子性（Atomicity）：事務是一個原子操作，由一系列動作組成。事務的原子性確保動作要嘛全部完成，要嘛完全不起作用。
+    
+    * 一致性（Consistency）：一旦事務完成（不管成功還是失敗），系統必須確保它所建模的業務處於一致的狀態，而不會是部分完成、部分失敗。在現實中的數據不應該被破壞。
+    
+    * 隔離性（Isolation）：可能有許多事務會同時處理相同的數據，因此每個事務都應該與其他事務隔離開來，防止數據損壞。
+    
+    * 持久性（Durability）：一旦事務完成，無論發生什麼系統錯誤，它的結果都不應該受到影響，這樣就能從任何系統崩潰中恢復過來。通常情況下，事務的結果被寫到持久化存儲器中。
+
+3. Spring事務管理
+    
+    1. 編程式事務管理
+    
+        編程式事務管理是侵入性事務管理，使用TransactionTemplate或者直接使用PlatformTransactionManager，對於編程式事務管理，Spring推薦使用TransactionTemplate。
+    
+    2. 聲明式事務管理
+    
+        聲明式事務管理建立在AOP之上，其本質是對方法前後進行攔截，然後在目標方法開始之前創建或者加入一個事務，執行完目標方法之後根據執行的情況提交或者回滾。編程式事務每次實現都要單獨實現，但業務量大功能複雜時，使用編程式事務無疑是痛苦的，而聲明式事務不同，聲明式事務屬於無侵入式，不會影響業務邏輯的實現，只需要在配置文件中做相關的事務規則聲明或者通過註解的方式，便可以將事務規則應用到業務邏輯中。
+
+        顯然聲明式事務管理要優於編程式事務管理，這正是Spring倡導的非侵入式的編程方式。唯一不足的地方就是聲明式事務管理的粒度是方法級別，而編程式事務管理是可以到代碼塊的，但是可以通過提取方法的方式完成聲明式事務管理的配置。
+    
+4. 搭建事務操作環境
+    
+    ![](https://i.imgur.com/ABO9jYc.png)
+
+    1. 創建數據表
+    
+    ![](https://i.imgur.com/pXdPIIE.png)
+
+    2. 創建service，搭建dao，完成對象創建和注入關係
+    
+        service 注入dao，在dao 注入JdbcTemplate，在JdbcTemplate 注入DataSource
+    
+    ```java=
+    @Service
+    public class UserService {
+        //注入 dao 
+        @Autowired
+        private UserDao userDao;
+    } 
+
+    @Repository
+    public class UserDaoImpl implements UserDao {
+        @Autowired 
+        private JdbcTemplate jdbcTemplate;
+    } 
+
+    ```
+    
+    3. 在dao創建兩個方法：多錢和少錢的方法，在service 創建方法（轉帳的方法）
+    
+    ```java=
+    @Repository
+    public class UserDaoImpl implements UserDao {
+        @Autowired
+        private JdbcTemplate jdbcTemplate;
+
+        //lucy 轉帳100 給mary 
+        //少錢 
+        @Override
+        public void reduceMoney() {
+            String sql = "update t_account set money=money-? where username=?";
+            jdbcTemplate.update(sql,100,"lucy");
+        }
+
+        //多錢 
+        @Override
+        public void addMoney() {
+            String sql = "update t_account set money=money+? where username=?";
+            jdbcTemplate.update(sql,100,"mary");
+        }
+    }
+
+    @Service
+    public class UserService {
+        //注入 dao 
+        @Autowired
+        private UserDao userDao;
+
+        //轉帳的方法 
+        public void accountMoney() {
+            //lucy 少 100 
+            userDao.reduceMoney();
+
+            //mary 多 100 
+            userDao.addMoney();
+        }
+    }
+    ```
+    
+    4. 上面代碼，如果正常執行沒有問題的，但是如果代碼執行過程中出現異常，有問題
+    
+    ![](https://i.imgur.com/sOAFpN3.png)
+
+    問：上面的問題如何解決呢？
+    
+    答：使用事務解決問題
+    
+    事務操作過程：
+
+## 43.尚矽谷_事務操作-Spring事務管理介紹
+    
+1. 事務添加到JavaEE 三層結構裡面Service 層（業務邏輯層）
+    
+![](https://i.imgur.com/mpqdtOJ.png)
+    
+2. 在Spring 進行事務管理操作，有兩種方式：
+    
+* 編程式事務管理
+* 聲明式事務管理（使用）
+    
+3. 聲明式事務管理的實現方式：
+    
+* 基於註解方式（使用）
+* 基於xml配置方式
+    
+4. 在Spring進行聲明式事務管理，底層使用AOP原理
+
+5. Spring事務API
+    
+    提供一個接口，代表事務管理器，這個接口針對不同的框架提供不同的實現類
+    
+    ![](https://i.imgur.com/WMU2v2n.png)
+
+## 44.尚矽谷_事務操作-Spring聲明式事務管理（註解方式）
+    
+1. 在Spring配置文件配置事務管理器
+    
+    1. 引入名稱空間tx
+    
+    ```xml=
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    ```
+
+    ![](https://i.imgur.com/T8l6SG5.png)
+
+    2. 創建事務管理器、開啟事務註解
+    ```xml=
+    <!--創建事務管理器-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <!--注入數據源-->
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--開啟事務註解-->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+    ```
+    
+2. 在service類或者類方法上中添加transactional註解
+    
+    * @Transactional，這個註解添加到類上面，也可以添加方法上面
+    * 如果把這個註解添加類上面，這個類裡面所有的方法都添加事務
+    * 如果把這個註解添加方法上面，為這個方法添加事務
+
+```java=
+@Service
+@Transactional // 事務註解，類上面或者裡面的方法上添加註解
+public class UserService {
+    @Autowired
+    private UserDao userDao;
+}
+```
+
+補充：在service 類上面添加註解@Transactional，在這個註解裡面可以配置事務相關參數
+
+![](https://i.imgur.com/DPfSK3Y.png)
+
+    
+本筆記參考網址，遵循CC 4.0 BY-SA版權協議：
+1. https://blog.csdn.net/weixin_45496190/article/details/107059038 
+2. https://blog.csdn.net/weixin_45496190/article/details/107067200 
+3. https://blog.csdn.net/weixin_45496190/article/details/107071204 
+4. https://blog.csdn.net/weixin_45496190/article/details/107082732 
+5. https://blog.csdn.net/weixin_45496190/article/details/107092107
+6. https://blog.csdn.net/qq_35843514/article/details/114442323
