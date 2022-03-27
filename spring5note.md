@@ -1448,6 +1448,11 @@ public void batchDeleteBook(List<Object[]> batchArgs) {
     
     在理想狀態下，事務之間將完全隔離，從而可以防止這些問題發生。然而，完全隔離會影響性能，因為隔離經常涉及到鎖定在數據庫中的記錄（甚至有時是鎖表）。完全隔離要求事務相互等待來完成工作，會阻礙並發。因此，可以根據業務場景選擇不同的隔離級別。
     
+    * 可重複讀：鎖Column。
+    * 串型化：鎖Table。
+    * Oracle預設：讀已提交。
+    * MySQL預設：可重複讀。
+    
     ![](https://i.imgur.com/e16Dhwy.png)
 
     ![](https://i.imgur.com/kIkbl1M.png)
@@ -1455,7 +1460,7 @@ public void batchDeleteBook(List<Object[]> batchArgs) {
     例如：
     
     ![](https://i.imgur.com/wWQgg1y.png)
-    
+      
 ---
     
 ### 3. 超時時間（timeout）
@@ -1690,7 +1695,8 @@ public class JTest5 {
 第三步：使用一個複合註解代替上面2個註解完成整合
     
 ```java=
-@SpringJUnitConfig(locations = "classpath:bean1.xml")public class JTest5{
+@SpringJUnitConfig(locations = "classpath:bean1.xml")
+    public class JTest5{
     @Autowired
     private UserService userService;
     @Test
@@ -1700,6 +1706,8 @@ public class JTest5 {
 } 
 ```
 
+// TODO P53 ~
+    
 ---
     
 本筆記參考網址，遵循CC 4.0 BY-SA版權協議：
