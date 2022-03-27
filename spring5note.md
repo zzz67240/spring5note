@@ -1,4 +1,5 @@
-###### tags: `Java`
+###### tags: `Java`, `Spring`
+edited by Xin Yang
 # 尚矽谷Spring框架視頻教程（spring5源碼級講解）
 ## 01-尚矽谷-課程介紹、02.尚矽谷_框架概述
 ### IOC
@@ -1363,19 +1364,343 @@ public void batchDeleteBook(List<Object[]> batchArgs) {
     * 如果把這個註解添加類上面，這個類裡面所有的方法都添加事務
     * 如果把這個註解添加方法上面，為這個方法添加事務
 
+    ```java=
+    @Service
+    @Transactional // 事務註解，類上面或者裡面的方法上添加註解
+    public class UserService {
+        @Autowired
+        private UserDao userDao;
+    }
+    ```
+
+3. 在service 類上面添加註解@Transactional，在這個註解裡面可以配置事務相關參數
+
+![](https://i.imgur.com/DPfSK3Y.png)
+    
+## 45.尚矽谷_事務操作-Spring聲明式事務管理-事務參數（傳播行為） ～ 47.尚矽谷_事務操作-Spring聲明式事務管理-事務參數（其他參數）
+    
+
+### 1. 事務的傳播行為（PROPAGATION）
+
+![](https://i.imgur.com/8qq37CC.png)
+
+事務的傳播性一般用在事務嵌套的場景，比如一個事務方法裡面調用了另外一個事務方法，那麼兩個方法是各自作為獨立的方法提交還是內層的事務合併到外層的事務一起提交，這就是需要事務傳播機制的配置來確定怎麼樣執行。
+    
+![](https://i.imgur.com/GZ4ayg4.png)
+
+* REQUIRED（**外層事務提交了，內層才會提交**）：Spring默認的傳播機制，能滿足絕大部分業務需求，如果外層有事務，則當前事務加入到外層事務，一塊提交，一塊回滾。如果外層沒有事務，新建一個事務執行
+    
+* REQUIRES_NEW（**內層事務結束，內層提交，不需要等到外層一起提交**）：該事務傳播機制是每次都會新開啟一個事務，同時把外層事務掛起，當前事務執行完畢，恢復上層事務的執行。如果外層沒有事務，執行當前新開啟的事務即可
+
+* SUPPORTS：如果外層有事務，則加入外層事務，如果外層沒有事務，則直接使用非事務方式執行。完全依賴外層的事務
+
+* NOT_SUPPORTED：該傳播機制不支持事務，如果外層存在事務則掛起，執行完當前代碼，則恢復外層事務，無論是否異常都不會回滾當前的代碼
+
+* MANDATORY：與NEVER相反，如果外層沒有事務，則拋出異常
+
+* NEVER：該傳播機制不支持外層事務，即如果外層有事務就拋出異常
+    
+* NESTED（**內層事務結束，要等著外層一起提交**）：該傳播機制的特點是可以保存狀態保存點，當前事務回滾到某一個點，從而避免所有的嵌套事務都回滾，即各自回滾各自的，如果子事務沒有把異常吃掉，基本還是會引起全部回滾的。
+
+傳播規則回答了這樣一個問題：一個新的事務應該被啟動還是被掛起，或者是一個方法是否應該在事務性上下文中運行。
+    
+例如：
+![](https://i.imgur.com/V9qoitH.png)
+    
+補充參考（滿複雜的）：https://www.jianshu.com/p/2cc923151c5e
+    
+---
+    
+### 2. 事務的隔離級別（isolation）
+
+1. 事務的隔離級別定義一個事務可能受其他並發務活動活動影響的程度，可以把事務的隔離級別想像為這個事務對於事物處理數據的自私程度。為了使多事務並行操作時不會產生問題，需要合適的隔離級別。
+
+2. 有3種「讀」問題：髒讀、不可重複讀、幻讀。
+    
+    #### 髒讀（Dirty read）
+   
+    **一個未提交事務讀取到另一個事務「修改但未提交」的數據。**
+    
+    如果這些改變在稍後被回滾了，那麼第一個事務讀取的數據就會是無效的。
+
+    ![](https://i.imgur.com/fk6t9ml.png)
+
+    #### 不可重複讀（Nonrepeatable read）
+
+    **一個未提交事務讀取到另一個事務「修改並已提交」的數據。**
+    
+    不可重複讀發生在一個事務執行相同的查詢兩次或兩次以上，但每次查詢結果都不相同時。這通常是由於另一個並發事務在兩次查詢之間更新了數據。
+    
+    **不可重複讀重點在於修改。屬於一種現象。**
+    
+    ![](https://i.imgur.com/5fJA1zz.png)
+
+    
+    #### 幻讀（Phantom reads）
+
+    **一個未提交事務讀取到另一個事務「添加或刪除並已提交」的數據。**
+    
+    幻讀和不可重複讀相似。當一個事務（T1）讀取幾行記錄後，另一個並發事務（T2）插入了一些記錄時，幻讀就發生了。在後來的查詢中，第一個事務（T1）就會發現一些原來沒有的額外記錄。
+    
+    **幻讀重點在新增或刪除。**
+    
+3. 透過設置隔離級別解決問題
+    
+    在理想狀態下，事務之間將完全隔離，從而可以防止這些問題發生。然而，完全隔離會影響性能，因為隔離經常涉及到鎖定在數據庫中的記錄（甚至有時是鎖表）。完全隔離要求事務相互等待來完成工作，會阻礙並發。因此，可以根據業務場景選擇不同的隔離級別。
+    
+    ![](https://i.imgur.com/e16Dhwy.png)
+
+    ![](https://i.imgur.com/kIkbl1M.png)
+
+    例如：
+    
+    ![](https://i.imgur.com/wWQgg1y.png)
+    
+---
+    
+### 3. 超時時間（timeout）
+
+1. 事務需要在一定時間內進行提交，如果不提交，就會進行回滾。
+2. 默認值是 -1（不超時），設置時間以秒單位進行計算。
+    
+例如：
+    
+![](https://i.imgur.com/5FDjD4p.png)
+
+---
+    
+### 4. 是否只讀（readOnly）
+    
+1. 讀：查詢操作。寫：添加、修改、刪除操作。
+2. readOnly默認值 false，表示可以查詢，可以添加修改刪除操作。
+3. 設置 readOnly值是 true，設置成 true之後，只能查詢。
+    
+例如：
+
+![](https://i.imgur.com/P0qFcby.png)
+
+### 5. 回滾（rollbackFor）
+
+設置出現哪些異常進行事務回滾。
+    
+### 6. 不回滾（noRollbackFor）
+    
+設置出現哪些異常不進行事務回滾。
+
+## 48.尚矽谷_事務操作-Spring聲明式事務管理（XML方式）
+
+在Spring配置文件中進行配置
+    
+1. 配置事務管理器
+2. 配置通知
+3. 配置切入點和切面
+
+```xml=
+<!--1 創建事務管理器-->
+<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+    <!--注入數據源-->
+    <property name="dataSource" ref="dataSource"/>
+</bean>
+
+<!--2 配置通知-->
+<tx:advice id = "tx_advice">
+    <!--配置事務的一些相關參數-->
+    <tx:attributes>
+        <!--指定哪種規則的方法上添加事務-->
+        <tx:method name="account*" propagation="REQUIRED"/>
+    </tx:attributes>
+</tx:advice>
+
+<!--3 配置切入點和切面-->
+<aop:config>
+    <!--配置切入點-->
+    <aop:pointcut id="pt" expression="execution(* com.micah.spring.service.UserService.*(..))"/>
+    <!--配置切面-->
+    <aop:advisor advice-ref="tx_advice" pointcut-ref="pt"/>
+</aop:config>
+```
+    
+## 49.尚矽谷_事務操作-Spring聲明式事務管理（完全註解方式）
+
+創建配置類，用來替代配置文件
+    
 ```java=
-@Service
-@Transactional // 事務註解，類上面或者裡面的方法上添加註解
-public class UserService {
-    @Autowired
-    private UserDao userDao;
+@Configuration  // 配置類
+@ComponentScan(basePackages = "com.atguigu")  // 組件掃描
+@EnableTransactionManagement  // 開啟事務
+public class TxConfig {
+
+    // 創建數據庫連接池
+    @Bean
+    public DruidDataSource getDruidDataSource(){
+        DruidDataSource druidDataSource = new DruidDataSource();
+        druidDataSource.setDriverClassName("com.mysql.jdbc.Driver");
+        druidDataSource.setUrl("jdbc:mysql:///user_db");
+        druidDataSource.setUsername("root");
+        druidDataSource.setPassword("root");
+        return druidDataSource;
+    }
+
+    // 創建jdbcTemplate對象
+    // Spring到IOC容器中，根據類型找到dataSource
+    @Bean
+    public JdbcTemplate getJdbcTemplate(DataSource dataSource){
+        JdbcTemplate jdbcTemplate = new JdbcTemplate();
+        // 注入dataSource
+        jdbcTemplate.setDataSource(dataSource);
+        return jdbcTemplate;
+    }
+
+    //創建事務管理器
+    @Bean
+    public DataSourceTransactionManager getDataSourceTransactionManager(DataSource dataSource){
+        DataSourceTransactionManager transactionManager = new DataSourceTransactionManager();
+        transactionManager.setDataSource(dataSource);
+        return transactionManager;
+    }
 }
 ```
 
-補充：在service 類上面添加註解@Transactional，在這個註解裡面可以配置事務相關參數
+## 50.尚矽谷_Spring5新功能-整合日誌框架
+    
+1. 整個Spring5框架的代碼基於Java8，運行時兼容JDK9，許多不建議使用的類和方法在代碼庫中刪除。
+    
+2. Spring 5.0 框架自帶了通用的日誌封裝
+    * Spring5已經移除Log4jConfigListener，官方建議使用Log4j2
+    * Spring5框架整合Log4j2
 
-![](https://i.imgur.com/DPfSK3Y.png)
+    
+    第一步：引入jar包
+    
+    ![](https://i.imgur.com/LgaTDix.png)
 
+
+    第二步：創建log4j2.xml
+    
+    ```xml=
+    <?xml version="1.0" encoding="UTF-8" ?>
+    <!--日誌級別以及優先級排序: OFF> FATAL> ERROR> WARN> INFO> DEBUG> TRACE> ALL-->
+    <!--Configuration後面的 status用於設置 log4j2自身內部的信息輸出，可以不設置， 當設置成trace時，可以看到log4j2內部各種詳細輸出-->
+    <configuration status="DEBUG">
+        <!--先定義所有的 appender-->
+        <appenders>
+            <!--輸出日誌信息到控制台-->
+            <console name="Console" target="SYSTEM_OUT">
+                <!--控制日誌輸出的格式-->
+                <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            </console>
+        </appenders>
+        <!--然後定義 logger，只有定義 logger並引入的 appender，appender才會生效-->
+        <!--root：用於指定項目的根日誌，如果沒有單獨指定 Logger，則會使用 root作為默認的日誌輸出-->
+        <loggers>
+            <root level="info">
+                <appender-ref ref="Console"/>
+            </root>
+        </loggers>
+    </configuration>
+    ```
+    
+## 51.尚矽谷_Spring5新功能-Nullable註解和函數式註冊對象
+    
+* Spring5 框架核心容器支持@Nullable 註解
+    
+    1. @Nullable註解可以使用在方法上面，屬性上面，參數上面，表示方法返回可以為空，屬性值可以為空，參數值可以為空。
+
+    2. 註解用在方法上面，方法返回值可以為空。
+
+    ![](https://i.imgur.com/qqgtgaG.png)
+
+    3. 註解使用在方法參數里面，方法參數可以為空。
+
+    ![](https://i.imgur.com/pSsbnod.png)
+
+
+    4. 註解使用在屬性上面，屬性值可以為空。
+
+    ![](https://i.imgur.com/CV3EIeO.png)
+
+* Spring5 核心容器支持函數式風格GenericApplicationContext
+    
+    函數式風格創建對象，交給spring 進行管理
+    
+```java=
+@Test
+public void testGenericApplicationContext() {
+    //1 創建 GenericApplicationContext 對象
+    GenericApplicationContext context = new GenericApplicationContext();
+    //2 調用 context 的方法對象註冊
+    context.refresh();
+    context.registerBean("user1",User.class,() -> new User());
+    //3 獲取在 spring 註冊的對象
+    //可以使用類全路徑，或者是registerBean第一個@Nullable的參數beanName進行設置
+    // User user = (User)context.getBean("com.atguigu.spring5.test.User");
+    User user = (User)context.getBean("user1");
+    System.out.println(user);
+}
+```
+  
+## 52.尚矽谷_Spring5新功能-整合JUnit5單元測試框架
+    
+Spring5 支持整合JUnit5
+
+1. 整合JUnit4
+    
+    第一步：引入Spring相關針對測試的依賴
+
+    ![](https://i.imgur.com/pSFT99j.png)
+
+    第二步：創建測試類，使用註解方式完成    
+
+    ```java=
+    @RunWith(SpringJUnit4ClassRunner.class) 
+    //單元測試框架
+    @ContextConfiguration("classpath:bean1.xml") 
+    //加載配置文件 
+    public class JTest4 {
+        @Autowired
+        private UserService userService;
+        @Test
+        public void test1() {
+            userService.accountMoney();
+        }
+    }
+    ```
+
+2. 整合Junit5
+
+1. 第一步：引入jar包
+    
+![](https://i.imgur.com/zvkHEkO.png)
+    
+第二步：創建測試類，使用註解方式完成
+
+```java=
+@ExtendWith(SpringExtension.class) 
+@ContextConfiguration("classpath:bean1.xml") 
+public class JTest5 {
+    @Autowired
+    private UserService userService;
+    @Test
+    public void test1() {
+        userService.accountMoney();
+    }
+} 
+```
+
+第三步：使用一個複合註解代替上面2個註解完成整合
+    
+```java=
+@SpringJUnitConfig(locations = "classpath:bean1.xml")public class JTest5{
+    @Autowired
+    private UserService userService;
+    @Test
+    public void test1() {
+        userService.accountMoney();
+    }
+} 
+```
+
+---
     
 本筆記參考網址，遵循CC 4.0 BY-SA版權協議：
 1. https://blog.csdn.net/weixin_45496190/article/details/107059038 
