@@ -1448,7 +1448,7 @@ public void batchDeleteBook(List<Object[]> batchArgs) {
     
     在理想狀態下，事務之間將完全隔離，從而可以防止這些問題發生。然而，完全隔離會影響性能，因為隔離經常涉及到鎖定在數據庫中的記錄（甚至有時是鎖表）。完全隔離要求事務相互等待來完成工作，會阻礙並發。因此，可以根據業務場景選擇不同的隔離級別。
     
-    * 可重複讀：鎖Column。
+    * 可重複讀：鎖Record。
     * 串型化：鎖Table。
     * Oracle預設：讀已提交。
     * MySQL預設：可重複讀。
@@ -1706,7 +1706,7 @@ public class JTest5 {
 } 
 ```
 
-// TODO P53 ~
+// TODO P53 WebFlux ~
     
 ---
     
